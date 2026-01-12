@@ -12,7 +12,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const submit = async (e) => {
+  async function submit(e) {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -25,7 +25,7 @@ export default function RegisterPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
