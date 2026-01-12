@@ -1,85 +1,90 @@
 "use client";
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { verifyOtp } from "../services/auth.service";
+
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
 
 export default function VerifyOtpPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const email = searchParams.get("email");
 
-  const [otp, setOtp] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [token] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return (
+      new URLSearchParams(window.location.search).get("token") ||
+      window.location.search.split("=")[1] ||
+      ""
+    );
+  });
+
+  const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true); // ✅ FIX
 
-  const submit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
+  const varifiuserEmail = async () => {
     try {
-      if (!email) throw new Error("Email not found");
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/verify-otp`,
+        { token }
+      );
+      setVerified(true);
 
-      await verifyOtp({ email, otp });
-      router.push("/login");
+      // auto redirect after success
+      setTimeout(() => {
+        router.push("/login");
+      }, 2000);
     } catch (err) {
-      setError(err.message || "OTP verification failed");
+      setError(err?.response?.data?.message || "Verification failed");
+      console.log(err?.response?.data);
     } finally {
-      setLoading(false);
+      setLoading(false); // ✅ FIX
     }
   };
 
+  useEffect(() => {
+    if (token.length > 0) {
+      varifiuserEmail();
+    } else {
+      setLoading(false);
+      setError("Invalid or missing token");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
-        
-        <h1 className="text-2xl font-bold text-center mb-4 text-gray-800">
-          Verify your email
+      <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8 text-center">
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">
+          Email Verification
         </h1>
 
-        <p className="text-sm text-center text-gray-600 mb-6">
-          We have sent a 6-digit OTP to  
-          <br />
-          <span className="font-medium">{email}</span>
-        </p>
+        {loading && (
+          <p className="text-blue-600 font-medium">
+            Verifying your email...
+          </p>
+        )}
+
+        {verified && (
+          <>
+            <p className="text-green-600 font-semibold mb-4">
+              ✅ Email verified successfully!
+            </p>
+            <p className="text-gray-600 text-sm">
+              Redirecting to login page...
+            </p>
+          </>
+        )}
 
         {error && (
-          <div className="mb-4 text-sm text-red-600 bg-red-100 p-2 rounded">
+          <div className="text-red-600 bg-red-100 p-3 rounded mt-4">
             {error}
           </div>
         )}
 
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Enter OTP
-            </label>
-            <input
-              type="text"
-              placeholder="123456"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              required
-              maxLength={6}
-              className="w-full text-center tracking-widest text-lg px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-60"
-          >
-            {loading ? "Verifying..." : "Verify OTP"}
-          </button>
-        </form>
-
-        <p className="text-sm text-center text-gray-600 mt-6">
-          Didn’t receive OTP?{" "}
-          <span className="text-blue-600 cursor-pointer hover:underline">
-            Resend
-          </span>
-        </p>
+        {!loading && !verified && !error && (
+          <p className="text-gray-600">
+            Please wait while we verify your email.
+          </p>
+        )}
       </div>
     </div>
   );
